@@ -93,13 +93,22 @@ def run_command(cmd: str) -> tuple[str, str]:
 # ── Asosiy agent ─────────────────────────────────────────────
 
 class ClientAgent:
-    def __init__(self, reload = None):
+    def __init__(self, reload=None, name: str = None, on_lower=None):
+        """
+        name      - serverga yuboriladigan ko'rinadigan nom (masalan,
+                    talaba kiritgan ism). Berilmasa, kompyuter nomi ishlatiladi.
+        on_lower  - serverdan {"type": "lower"} xabari kelganda chaqiriladigan
+                    callback (oynani BIR MARTA orqaga tushirish uchun, doimiy
+                    ruxsat/sozlama EMAS - shunchaki bir martalik buyruq).
+        """
         self._sock = None
         self.reload = reload
+        self.on_lower = on_lower
         self._running = True
+        self.name = name or CLIENT_NAME
 
     def run(self):
-        print(f"[{CLIENT_NAME}] Agent ishga tushdi.")
+        print(f"[{self.name}] Agent ishga tushdi.")
         print(f"Server: {SERVER_HOST}:{SERVER_PORT}")
         while self._running:
             try:
@@ -117,7 +126,7 @@ class ClientAgent:
         print(f"[✓] Serverga ulandi: {SERVER_HOST}:{SERVER_PORT}")
 
         # O'zini tanishtirish
-        hello = json.dumps({"type": "hello", "name": CLIENT_NAME})
+        hello = json.dumps({"type": "hello", "name": self.name})
         send_msg(sock, hello)
 
         # Buyruqlarni tinglash
@@ -146,7 +155,15 @@ class ClientAgent:
             elif xabar_turi == "config":
                 with open('config.json', "w") as f:
                     f.write(json.dumps(msg.get("config", {})))
-                self.reload()
+                if self.reload:
+                    self.reload()
+
+            elif xabar_turi == "lower":
+                # Bir martalik buyruq - oynani darhol orqaga tushirish.
+                # Bu doimiy sozlama/ruxsat EMAS, har safar o'qituvchi
+                # bosganda shu lahzada bajariladi.
+                if self.on_lower:
+                    self.on_lower()
 
 
 

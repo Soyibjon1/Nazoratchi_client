@@ -5,15 +5,21 @@
         {
             "name": "Notepad",
             "path": "C:\\Windows\\System32\\notepad.exe",
-            "allowed": true, "icon": ""},
+            "allowed": true,
+            "icon": ""
+        },
         {
             "name": "Calculator",
             "path": "C:\\Windows\\System32\\calc.exe",
-            "allowed": false, "icon": ""},
+            "allowed": false,
+            "icon": ""
+        },
         {
             "name": "Chrome",
             "path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
             "allowed": false,
-            "icon": ""}
-    ]
+            "icon": ""
+        }
+    ],
+    "alt_tab": false
 }
