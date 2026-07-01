@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import ctypes
 import platform
@@ -11,21 +12,24 @@ import customtkinter as ctk
 import keyboard
 import pywinstyles
 
+# ---------------------------------------------------------------------------
+# BASE_DIR — barcha yo'llar shu papkaga nisbatan hisoblanadi.
+# Avtozagruzka (Task Scheduler, Run registry) ishga tushirganda
+# ishchi papka (CWD) boshqa joyda bo'lishi mumkin — shu sababli
+# Talaba.py joylashgan papkani aniqlab, CWD'ni o'sha yerga o'rnatamiz.
+# Shundan keyin config.json, fon/, rasm_tahrir.py va boshqa
+# nisbiy yo'llar hamma vaqt to'g'ri ishlaydi.
+# ---------------------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(BASE_DIR)
+
 from client_agent import ClientAgent
 from rasm_tahrir import get_program_icon, get_wallpaper
 
-CONFIG_PATH = "config.json"
+CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 agent=None
 
-# ---------------------------------------------------------------------------
-# KONSOL OYNASINI YASHIRISH
-# ---------------------------------------------------------------------------
-# Talaba kompyuterida qora konsol oynasi ko'rinib turmasligi uchun.
-# DIQQAT: bu faqat OYNANI yashiradi, print() funksiyasi baribir
-# ishlayveradi (faqat ko'rinmas konsolga yoziladi) - shu sababli
-# log faylga alohida yo'naltirish shart emas, debugging uchun kerak
-# bo'lsa, konsolni vaqtincha qaytadan ko'rsatish (ShowWindow(hwnd, 1))
-# orqali tekshirish mumkin.
+
 if platform.system() == "Windows":
     try:
         _console_hwnd = ctypes.windll.kernel32.GetConsoleWindow()
@@ -115,7 +119,7 @@ def block_and_warn(combo):
     if combo == "alt+f5":
         wp.configure(image=get_wallpaper(keyingi_rasm(), olcham))
         return
-    if combo in ("chiqish", "ctrl+alt+shift+break"):
+    if combo == "ctrl+alt+shift+break":
         root.after(0, _do_exit)
         return
     print(f"'{combo}' bloklangan - bu amal taqiqlangan!")
@@ -217,6 +221,17 @@ def _setup_program_grid():
     pywinstyles.set_opacity(_programs_frame, color="#4b3621")
 
 
+def _do_update():
+    """Serverdan yangilash buyrug'i kelganda chaqiriladi."""
+    from updater import check_and_update
+    updated = check_and_update()
+    if updated:
+        print("[Updater] Yangilandi, qayta ishga tushirilmoqda...")
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    else:
+        print("[Updater] Yangilanish yo'q yoki xato.")
+
+
 def yangilash():
     """Serverdan yangi konfiguratsiya kelganda chaqiriladi."""
     _setup_program_grid()
@@ -234,9 +249,10 @@ def aloqa():
     TALABA_ISMI = (_ism_oynasi.get_input() or "").strip() or platform.node() or "Noma'lum"
 
     agent = ClientAgent(
-        reload=lambda: root.after(0, yangilash),  # tarmoq threadidan emas, asosiy threadda bajariladi
+        reload=lambda: root.after(0, yangilash),
         name=TALABA_ISMI,
         on_lower=lambda: root.after(0, root.lower),
+        on_update=lambda: Thread(target=_do_update, daemon=True).start(),
     )
     Thread(target=agent.run, daemon=True).start()
 root.after(10, aloqa)

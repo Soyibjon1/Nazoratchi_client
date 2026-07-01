@@ -7,6 +7,12 @@ import os
 import sys
 import platform
 
+# Fayl joylashgan papka — config.json shu yerda bo'ladi.
+# Avtozagruzka ishga tushirganda CWD boshqa joy bo'lishi mumkin,
+# shu sababli absolut yo'l ishlatamiz.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+
 # ── Sozlamalar ──────────────────────────────────────────────
 
 SERVER_HOST = sys.argv[1] if len(sys.argv) > 1 else "192.168.100.250"
@@ -93,17 +99,11 @@ def run_command(cmd: str) -> tuple[str, str]:
 # ── Asosiy agent ─────────────────────────────────────────────
 
 class ClientAgent:
-    def __init__(self, reload=None, name: str = None, on_lower=None):
-        """
-        name      - serverga yuboriladigan ko'rinadigan nom (masalan,
-                    talaba kiritgan ism). Berilmasa, kompyuter nomi ishlatiladi.
-        on_lower  - serverdan {"type": "lower"} xabari kelganda chaqiriladigan
-                    callback (oynani BIR MARTA orqaga tushirish uchun, doimiy
-                    ruxsat/sozlama EMAS - shunchaki bir martalik buyruq).
-        """
+    def __init__(self, reload=None, name: str = None, on_lower=None, on_update=None):
         self._sock = None
         self.reload = reload
         self.on_lower = on_lower
+        self.on_update = on_update
         self._running = True
         self.name = name or CLIENT_NAME
 
@@ -153,17 +153,18 @@ class ClientAgent:
                 ).start()
 
             elif xabar_turi == "config":
-                with open('config.json', "w") as f:
+                with open(CONFIG_PATH, "w", encoding="utf-8") as f:
                     f.write(json.dumps(msg.get("config", {})))
                 if self.reload:
                     self.reload()
 
             elif xabar_turi == "lower":
-                # Bir martalik buyruq - oynani darhol orqaga tushirish.
-                # Bu doimiy sozlama/ruxsat EMAS, har safar o'qituvchi
-                # bosganda shu lahzada bajariladi.
                 if self.on_lower:
                     self.on_lower()
+
+            elif xabar_turi == "update":
+                if self.on_update:
+                    self.on_update()
 
 
 
